@@ -133,11 +133,12 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer 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',
                         'HTTP-Referer': window.location.href,
-                        'X-Title': 'Simple Chatbot'
+                        'X-Title': 'Simple Chatbot',
+                        'Origin': window.location.origin
                     },
                     body: JSON.stringify({
                         model: "deepseek/deepseek-r1-zero:free",
-                        messages: [...messages, { role: "user", content: message }],
+                        messages: messages,
                         temperature: 0.7
                     })
                 });
