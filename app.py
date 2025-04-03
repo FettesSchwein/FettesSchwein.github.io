@@ -21,21 +21,21 @@ app.add_middleware(
 def root():
     return {"message": "API is live"}
 
-# ✅ Define input model
+# ✅ Define input model for POST request
 class UserInput(BaseModel):
     query: str
 
 # ✅ Load DeepSeek API Key (Ensure this is set in Render environment variables)
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # Set this in Render’s environment settings
 
-# ✅ Chatbot endpoint using DeepSeek R1 API
+# ✅ POST request to handle chatbot input
 @app.post("/chat")
 def chat(user_input: UserInput):
     if not DEEPSEEK_API_KEY:
         return {"error": "DeepSeek API key is missing!"}
 
-    # DeepSeek API URL (check official docs for updates)
-    url = "https://api.deepseek.com/v1/chat/completions"  
+    # DeepSeek API URL
+    url = "https://api.deepseek.com/v1/chat/completions"
 
     # Construct API request
     headers = {
@@ -49,8 +49,8 @@ def chat(user_input: UserInput):
             {"role": "system", "content": "You are a helpful AI assistant."},
             {"role": "user", "content": user_input.query}
         ],
-        "temperature": 0.7,  
-        "max_tokens": 512 
+        "temperature": 0.7,
+        "max_tokens": 512
     }
 
     # Make API call
