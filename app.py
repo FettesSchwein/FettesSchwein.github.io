@@ -1,41 +1,37 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 import requests
 import os
 
-# Set your DeepSeek API Key
-DEEPSEEK_API_KEY = "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"
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-
 app = FastAPI()
 
-class UserInput(BaseModel):
-    query: str
+# Replace this with your actual DeepSeek API Key
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
-@app.get("/")  # This will handle requests to "/"
+@app.get("/")
 def home():
     return {"message": "FastAPI Chatbot is live on Render!"}
 
-@app.get("/chat")
-def chat():
-    return {"message": "Chatbot API is ready!"}
+@app.post("/chat/")
+def chat(query: dict):
+    user_message = query.get("message")
+    
+    if not user_message:
+        raise HTTPException(status_code=400, detail="Message is required")
 
-
-@app.post("/chat")
-def chat_with_model(user_input: UserInput):
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
-    
-    payload = {
-        "model": "deepseek-llm-r1",
-        "messages": [{"role": "user", "content": user_input.query}]
+
+    data = {
+        "model": "deepseek-r1",  # Use the correct model name
+        "messages": [{"role": "user", "content": user_message}],
     }
-    
-    response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
-    
+
+    response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
+
     if response.status_code == 200:
-        return {"response": response.json()["choices"][0]["message"]["content"]}
+        return response.json()
     else:
-        return {"error": "API request failed", "status_code": response.status_code}
+        raise HTTPException(status_code=response.status_code, detail=response.text)
