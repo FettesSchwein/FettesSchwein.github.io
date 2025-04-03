@@ -12,6 +12,15 @@ app = FastAPI()
 class UserInput(BaseModel):
     query: str
 
+@app.get("/")  # This will handle requests to "/"
+def home():
+    return {"message": "FastAPI Chatbot is live on Render!"}
+
+@app.get("/chat")
+def chat():
+    return {"message": "Chatbot API is ready!"}
+
+
 @app.post("/chat")
 def chat_with_model(user_input: UserInput):
     headers = {
