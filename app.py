@@ -1,20 +1,29 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+# ✅ Add CORS middleware to allow frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change this to specific frontend URL if needed
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ Fix "HEAD /" issue
 @app.get("/")
-def home():
-    return {"message": "FastAPI Chatbot is live on Render!"}
+@app.head("/")
+def root():
+    return {"message": "API is live"}
 
-@app.get("/chat/")
-def chat_get():
-    return {"message": "Use a POST request to send messages."}
+# ✅ Ensure your chatbot endpoint exists and works
+class UserInput(BaseModel):
+    query: str
 
-@app.post("/chat/")
-def chat_post(query: dict):
-    user_message = query.get("message")
-
-    if not user_message:
-        raise HTTPException(status_code=400, detail="Message is required")
-
-    return {"response": f"Chatbot received: {user_message}"}
+@app.post("/chat")
+def chat(user_input: UserInput):
+    response = f"Received: {user_input.query}"  # Replace with actual processing
+    return {"response": response}
