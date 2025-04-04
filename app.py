@@ -10,7 +10,7 @@ import openai
 load_dotenv()
 
 # NEW: use OpenAI class from openai v1+
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key="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")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
