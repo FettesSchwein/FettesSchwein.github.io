@@ -1,64 +1,41 @@
-import requests
+# app.py
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from dotenv import load_dotenv
 import os
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi.middleware.cors import CORSMiddleware
+import openai
+
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
-# ✅ CORS middleware to allow frontend requests
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@app.get("/", response_class=HTMLResponse)
+async def get_chat(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-# ✅ HEAD request fix for Render
-@app.get("/")
-@app.head("/")
-def root():
-    return {"message": "API is live"}
+@app.post("/chat", response_class=HTMLResponse)
+async def post_chat(request: Request, user_input: str = Form(...)):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": user_input}
+            ]
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        reply = f"Error: {str(e)}"
 
-# ✅ Define input model for POST request
-class UserInput(BaseModel):
-    query: str
+    return templates.TemplateResponse("index.html", {"request": request, "response": reply, "user_input": user_input})
 
-# ✅ Load DeepSeek API Key (Ensure this is set in Render environment variables)
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # Set this in Render’s environment settings
 
-# ✅ POST request to handle chatbot input
-@app.post("/chat")
-def chat(user_input: UserInput):
-    if not DEEPSEEK_API_KEY:
-        return {"error": "DeepSeek API key is missing!"}
 
-    # DeepSeek API URL
-    url = "https://api.deepseek.com/v1/chat/completions"
 
-    # Construct API request
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
 
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [
-            {"role": "system", "content": "You are a helpful AI assistant."},
-            {"role": "user", "content": user_input.query}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 512
-    }
 
-    # Make API call
-    response = requests.post(url, json=payload, headers=headers)
 
-    # Handle response
-    if response.status_code == 200:
-        response_data = response.json()
-        return {"response": response_data["choices"][0]["message"]["content"]}
-    else:
-        return {"error": f"DeepSeek API Error: {response.text}"}
+
