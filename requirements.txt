@@ -1,4 +1,6 @@
+# requirements.txt
 fastapi
 uvicorn
-requests
-gunicorn
+python-dotenv
+openai
+jinja2
