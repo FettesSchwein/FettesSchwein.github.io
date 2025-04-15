@@ -2,22 +2,29 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from rag_utils import load_dataset, build_faiss_index
 import os
 from openai import OpenAI
+import faiss
+import numpy as np
 
+# Load environment and OpenAI
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# FastAPI setup
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Store chat history in memory (can be replaced with DB for persistence)
-chat_history = []
+# Load dataset and build index once at startup
+df = load_dataset("training dataset.csv")
+index, text_chunks = build_faiss_index(df)
 
 class ChatRequest(BaseModel):
     message: str
+
+chat_history = []
 
 @app.get("/", response_class=HTMLResponse)
 async def get_chat(request: Request):
@@ -26,17 +33,27 @@ async def get_chat(request: Request):
 @app.post("/chat")
 async def post_chat(req: ChatRequest):
     user_input = req.message
-
-    # Add user message to history
     chat_history.append({"role": "user", "content": user_input})
-
-    # Keep the last 10 messages for context
     context = chat_history[-10:]
+
+    # Step 1: Embed user query
+    query_embedding = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=[user_input]
+    ).data[0].embedding
+
+    # Step 2: Search FAISS for relevant rows
+    D, I = index.search(np.array([query_embedding]).astype("float32"), k=3)
+    relevant_chunks = [text_chunks[i] for i in I[0]]
+
+    # Step 3: Include chunks in GPT context
+    system_prompt = "You are a helpful assistant that answers based on the following dataset excerpts:\n" + "\n".join(relevant_chunks)
+    messages = [{"role": "system", "content": system_prompt}] + context
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "system", "content": "You are a helpful assistant."}] + context
+            messages=messages
         )
         reply = response.choices[0].message.content
         chat_history.append({"role": "assistant", "content": reply})
