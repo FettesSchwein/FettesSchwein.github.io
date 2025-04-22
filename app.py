@@ -9,16 +9,15 @@ from openai import OpenAI
 import faiss
 import numpy as np
 
-# Load environment and OpenAI
+# Load env vars and client
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# FastAPI setup
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# Load dataset and build index once at startup
-df = load_dataset("training dataset.csv")
+# Load Excel dataset + index
+df = load_dataset("trainingdataset_shrunk.xlsx")
 index, text_chunks = build_faiss_index(df)
 
 class ChatRequest(BaseModel):
@@ -42,12 +41,12 @@ async def post_chat(req: ChatRequest):
         input=[user_input]
     ).data[0].embedding
 
-    # Step 2: Search FAISS for relevant rows
+    # Step 2: Search FAISS
     D, I = index.search(np.array([query_embedding]).astype("float32"), k=3)
     relevant_chunks = [text_chunks[i] for i in I[0]]
 
-    # Step 3: Include chunks in GPT context
-    system_prompt = "You are a helpful assistant that answers based on the following dataset excerpts:\n" + "\n".join(relevant_chunks)
+    # Step 3: Prompt GPT-4o
+    system_prompt = "You are a helpful assistant answering based on the following data rows:\n" + "\n".join(relevant_chunks)
     messages = [{"role": "system", "content": system_prompt}] + context
 
     try:
